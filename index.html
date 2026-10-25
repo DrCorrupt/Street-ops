@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzxMFZREXxPDuYNRI0ZB6a3bECA=" crossorigin="">
-  <title>STREET OPS — Real Streets. Real Ops. (v0.3)</title>
+  <title>STREET OPS — Real Streets. Real Ops. (v0.4)</title>
   <style>
     :root{--lime:#c9ff55;--ink:#101a18;--panel:#172421;--muted:#9bad9f;--paper:#f2f6e8;--red:#ff7567}
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--ink);color:var(--paper)}
@@ -40,6 +40,7 @@
     .quickbar button.stop{background:#ff927e}
     .quickbar span{flex:1;line-height:1.4}
     .leaflet-tile{image-rendering:auto}
+    .debug-map{display:none;position:fixed;z-index:35;top:calc(env(safe-area-inset-top) + 213px);left:10px;right:60px;max-width:330px;white-space:pre-wrap;pointer-events:none;font:11px/1.4 monospace;background:#0b181ae5;color:#bbfa86;padding:10px;border:1px solid #8ba777;border-radius:10px}
     @media(max-width:400px){.map-controls{right:11px;top:calc(env(safe-area-inset-top) + 191px)}.round{width:43px;height:43px}.gps-pill{font-size:10px}}
     
     .map-warning{position:fixed;top:48%;left:50%;transform:translate(-50%,-50%);z-index:7;background:#15251ef0;border:1px solid #b6d58a;border-radius:16px;padding:14px 17px;width:calc(100% - 58px);max-width:330px;font-size:12px;font-weight:800;color:white;text-align:center;display:none;box-shadow:0 10px 30px #0007;pointer-events:none}
@@ -74,7 +75,7 @@
   </style>
 </head>
 <body>
-  <div id="map" aria-label="Street Ops territory map"></div><div class="veil"></div><div class="map-warning" id="mapWarning" role="status">Some map tiles could not load. Switching providers or retrying; tap ▧ to change maps manually.</div>
+  <div id="map" aria-label="Street Ops territory map"></div><div class="veil"></div><div class="debug-map" id="mapDebug"></div><div class="map-warning" id="mapWarning" role="status">Some map tiles could not load. Switching providers or retrying; tap ▧ to change maps manually.</div>
   <header>
     <div class="headline"><div><div class="logo">STREET <b>OPS</b></div><div class="strap">REAL STREETS. REAL OPS.</div></div><button class="mode" id="modeBtn">DEMO MODE</button></div>
     <div class="stats"><div class="stat"><strong id="areaStat">0</strong><span>m² claimed</span></div><div class="stat"><strong id="countStat">0</strong><span>territories</span></div><div class="stat"><strong id="rideStat">0 m</strong><span>this route</span></div></div>
@@ -106,7 +107,7 @@
         <div class="section-label" style="margin-top:14px">CLAIMED TERRITORY</div>
         <div id="claims"><p class="small">No territory yet. Close your first loop to claim one.</p></div>
         <button class="secondary" id="clearBtn" style="margin-top:8px">CLEAR MY LOCAL GAME DATA</button>
-        <p class="footnote">Prototype v0.3 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
+        <p class="footnote">Prototype v0.4 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
       </section>
     </div>
   </main>
@@ -141,10 +142,10 @@
       if(t<=0.015||t>=0.985||u<=0.015||u>=0.985)return null;
       return [a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])];
     }
-    var map=L.map("map",{zoomControl:false,attributionControl:true,preferCanvas:true,fadeAnimation:false,zoomSnap:1}).setView([-35.105,150.60],14);
+    var map=L.map("map",{zoomControl:false,attributionControl:true,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,zoomSnap:1}).setView([-35.105,150.60],14);
     // Two independent map tile sources. Automatic fallback when a mobile connection blocks one.
     var basemaps=[
-      {name:"CARTO STREETS",url:"https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",options:{subdomains:"abcd",maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}},
+      {name:"CARTO STREETS",url:"https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",options:{subdomains:"",maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}},
       {name:"OPENSTREETMAP",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",options:{subdomains:"",maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}}
     ];
     var baseIndex=0,baseLayer=null,autoFallbackUsed=false,mapGeneration=0;
@@ -186,7 +187,7 @@
       var generation=++mapGeneration;
       if(baseLayer)map.removeLayer(baseLayer);
       id("mapWarning").classList.remove("show");
-      var layer=L.tileLayer(basemaps[index].url,Object.assign({},basemaps[index].options,{keepBuffer:3,updateWhenIdle:true}));
+      var layer=L.tileLayer(basemaps[index].url,Object.assign({},basemaps[index].options,{keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false}));
       baseLayer=layer;
       var failures=0,successes=0;
       layer.on("tileload",function(ev){
@@ -216,6 +217,24 @@
     document.addEventListener("visibilitychange",function(){if(!document.hidden)setTimeout(refreshMap,180);});
     if(window.visualViewport)window.visualViewport.addEventListener("resize",refreshMap);
     setTimeout(refreshMap,500);
+    // Opt-in visual diagnostics: /Street-ops/?debug=1 (shows no GPS coordinates).
+    if(new URLSearchParams(location.search).has("debug")){
+      var debugEl=id("mapDebug");debugEl.style.display="block";
+      setInterval(function(){
+        var box=map.getContainer().getBoundingClientRect(),size=map.getSize(),tiles=baseLayer&&baseLayer.getContainer()?Array.from(baseLayer.getContainer().querySelectorAll("img.leaflet-tile")):[];
+        var onscreen=tiles.filter(function(im){var b=im.getBoundingClientRect();return b.right>box.left&&b.left<box.right&&b.bottom>box.top&&b.top<box.bottom;});
+        var good=onscreen.filter(function(im){return im.complete&&im.naturalWidth>0;});
+        var failed=onscreen.filter(function(im){return im.complete&&im.naturalWidth===0;});
+        var sample=onscreen.slice(0,3).map(function(im){var r=im.getBoundingClientRect();return [Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)].join(",");});
+        debugEl.textContent="v0.4 MAP DIAGNOSTICS\n"+
+          "screen "+Math.round(innerWidth)+"×"+Math.round(innerHeight)+"\n"+
+          "container "+Math.round(box.width)+"×"+Math.round(box.height)+"\n"+
+          "Leaflet "+size.x+"×"+size.y+"\n"+
+          "provider "+basemaps[baseIndex].name+"\n"+
+          "visible tiles "+onscreen.length+" / loaded "+good.length+" / failed "+failed.length+"\n"+
+          "tile bounds "+sample.join(" | ");
+      },1800);
+    }
     var trail=[],history=L.layerGroup().addTo(map),claimsLayer=L.layerGroup().addTo(map),trailLine=L.polyline([],{color:"#b3ff39",weight:5,opacity:.95}).addTo(map),player=null,accuracyCircle=null,tracking=false,demo=false,watchId=null,lastTime=0,toastTimer=null;
     function show(message){var el=id("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show");},4500);}
     function status(s,kind){id("status").textContent="● "+s;id("status").className="gps-pill "+(kind||"");}
