@@ -1,6 +1,12 @@
 # STREET OPS — Real Streets. Real Ops.
 
-Mobile GPS territory game prototype v0.1.
+Mobile GPS territory game prototype v0.2.
+
+## Map troubleshooting
+- The game tries CARTO Streets first, then automatically switches to OpenStreetMap if map images fail to load.
+- Use the ▧ layers control at the right to switch maps manually.
+- Tap SHOW MORE MAP on the bottom sheet for a wider map view.
+- If the map is blank, open the game directly in Chrome, check the data connection and reload. GPS needs permission and HTTPS.
 
 ## Included
 - Live GPS trail tracking (while app is in foreground)
