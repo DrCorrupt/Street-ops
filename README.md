@@ -1,6 +1,13 @@
 # STREET OPS — Real Streets. Real Ops.
 
-Mobile GPS territory game prototype v0.2.
+Mobile GPS territory game prototype v0.3.
+
+## v0.3 stability changes
+- Automatically recovers individual broken map tiles using another provider.
+- If too many map tiles stay empty, retries the full map and then changes provider.
+- Real GPS always starts a fresh trail, never continuing a demo path.
+- Starting GPS automatically reveals a map-first layout with quick GPS stop button.
+- Confirm the app version is v0.3 after opening in Chrome; use a hard refresh if needed.
 
 ## Map troubleshooting
 - The game tries CARTO Streets first, then automatically switches to OpenStreetMap if map images fail to load.
