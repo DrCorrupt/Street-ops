@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzxMFZREXxPDuYNRI0ZB6a3bECA=" crossorigin="">
-  <title>STREET OPS — Real Streets. Real Ops. (v0.4)</title>
+  <title>STREET OPS — Real Streets. Real Ops. (v0.5)</title>
   <style>
     :root{--lime:#c9ff55;--ink:#101a18;--panel:#172421;--muted:#9bad9f;--paper:#f2f6e8;--red:#ff7567}
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--ink);color:var(--paper)}
@@ -107,7 +107,7 @@
         <div class="section-label" style="margin-top:14px">CLAIMED TERRITORY</div>
         <div id="claims"><p class="small">No territory yet. Close your first loop to claim one.</p></div>
         <button class="secondary" id="clearBtn" style="margin-top:8px">CLEAR MY LOCAL GAME DATA</button>
-        <p class="footnote">Prototype v0.4 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
+        <p class="footnote">Prototype v0.5 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
       </section>
     </div>
   </main>
@@ -142,6 +142,21 @@
       if(t<=0.015||t>=0.985||u<=0.015||u>=0.985)return null;
       return [a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])];
     }
+    // Some Android webviews and automated browser viewports report a 0x0 map
+    // when Leaflet initializes against CSS viewport units. Give it concrete
+    // pixel dimensions before requesting a single tile.
+    var mapNode=id("map");
+    function sizeMapNode(){
+      var w=Math.max(320,window.innerWidth||document.documentElement.clientWidth||360);
+      var h=Math.max(320,window.innerHeight||document.documentElement.clientHeight||640);
+      mapNode.style.position="fixed";
+      mapNode.style.inset="0 auto auto 0";
+      mapNode.style.display="block";
+      mapNode.style.width=w+"px";
+      mapNode.style.height=h+"px";
+      return {width:w,height:h};
+    }
+    sizeMapNode();
     var map=L.map("map",{zoomControl:false,attributionControl:true,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,zoomSnap:1}).setView([-35.105,150.60],14);
     // Two independent map tile sources. Automatic fallback when a mobile connection blocks one.
     var basemaps=[
@@ -211,12 +226,23 @@
     }
     setBasemap(0,false);
         // Mobile viewport and orientation changes can leave Leaflet with stale dimensions.
-    function refreshMap(){map.invalidateSize({pan:false});if(baseLayer){var layer=baseLayer,generation=mapGeneration;setTimeout(function(){assessCoverage(layer,generation,0);},4000);}}
+    function refreshMap(){
+      var dimensions=sizeMapNode();
+      map.invalidateSize({pan:false,animate:false});
+      if(map.getSize().x<20||map.getSize().y<20){
+        mapNode.style.setProperty("width",dimensions.width+"px","important");
+        mapNode.style.setProperty("height",dimensions.height+"px","important");
+        map.invalidateSize({pan:false,animate:false});
+      }
+      if(baseLayer){var layer=baseLayer,generation=mapGeneration;setTimeout(function(){assessCoverage(layer,generation,0);},4000);}
+    }
     window.addEventListener("resize",refreshMap);
     window.addEventListener("orientationchange",function(){setTimeout(refreshMap,350);});
     document.addEventListener("visibilitychange",function(){if(!document.hidden)setTimeout(refreshMap,180);});
     if(window.visualViewport)window.visualViewport.addEventListener("resize",refreshMap);
-    setTimeout(refreshMap,500);
+    setTimeout(refreshMap,100);
+    setTimeout(refreshMap,700);
+    window.addEventListener("load",function(){setTimeout(refreshMap,50);});
     // Opt-in visual diagnostics: /Street-ops/?debug=1 (shows no GPS coordinates).
     if(new URLSearchParams(location.search).has("debug")){
       var debugEl=id("mapDebug");debugEl.style.display="block";
@@ -226,7 +252,7 @@
         var good=onscreen.filter(function(im){return im.complete&&im.naturalWidth>0;});
         var failed=onscreen.filter(function(im){return im.complete&&im.naturalWidth===0;});
         var sample=onscreen.slice(0,3).map(function(im){var r=im.getBoundingClientRect();return [Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)].join(",");});
-        debugEl.textContent="v0.4 MAP DIAGNOSTICS\n"+
+        debugEl.textContent="v0.5 MAP DIAGNOSTICS\n"+
           "screen "+Math.round(innerWidth)+"×"+Math.round(innerHeight)+"\n"+
           "container "+Math.round(box.width)+"×"+Math.round(box.height)+"\n"+
           "Leaflet "+size.x+"×"+size.y+"\n"+
