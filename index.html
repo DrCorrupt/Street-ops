@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#101a18">
+  <meta name="description" content="STREET OPS — real streets, real ops. Ride your route and claim territory.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzxMFZREXxPDuYNRI0ZB6a3bECA=" crossorigin="">
+  <title>STREET OPS — Real Streets. Real Ops.</title>
+  <style>
+    :root{--lime:#c9ff55;--ink:#101a18;--panel:#172421;--muted:#9bad9f;--paper:#f2f6e8;--red:#ff7567}
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--ink);color:var(--paper)}
+    button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}button:disabled{opacity:.5;cursor:not-allowed}
+    #map{position:absolute;inset:0;z-index:1;background:#dce5d7}
+    .leaflet-control-attribution{font-size:9px!important}
+    .veil{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(180deg,rgba(10,21,17,.7),transparent 24%,transparent 55%,rgba(10,21,17,.38))}
+    header{position:absolute;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top) + 12px) 15px 8px;z-index:10;pointer-events:none}
+    .headline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .logo{font-weight:1000;font-size:25px;letter-spacing:-1.3px;line-height:1;text-shadow:0 2px 8px #0008}
+    .logo b{color:var(--lime)}.strap{font-size:9px;font-weight:900;letter-spacing:2px;color:var(--lime);margin-top:5px}
+    .mode{background:#182921ec;border:1px solid #648671a0;color:var(--paper);border-radius:16px;padding:9px 11px;font-size:11px;font-weight:900;white-space:nowrap}
+    .mode.on{background:var(--lime);color:var(--ink)}
+    .stats{display:flex;gap:7px;margin-top:13px;max-width:430px}
+    .stat{background:#11201de8;border:1px solid #45605191;border-radius:12px;padding:8px 12px;min-width:0;flex:1;box-shadow:0 4px 18px #0002}
+    .stat strong{display:block;color:white;font-size:17px;font-weight:1000}.stat span{font-size:9px;color:#b1c6b7;text-transform:uppercase;letter-spacing:1px;font-weight:800}
+    .gps-pill{position:absolute;top:calc(env(safe-area-inset-top) + 108px);right:14px;z-index:10;background:#172421e9;padding:9px 12px;border:1px solid #45594b;border-radius:20px;font-size:11px;font-weight:800;max-width:210px;text-align:center}
+    .gps-pill.good{color:var(--lime)}.gps-pill.warn{color:#ffe092}
+    .gps-pill.bad{color:#ffa397}
+    .map-controls{position:absolute;z-index:9;right:14px;top:calc(env(safe-area-inset-top) + 155px);display:flex;flex-direction:column;gap:9px}
+    .round{border:0;border-radius:16px;box-shadow:0 4px 15px #0004;background:#13251ff2;color:var(--lime);width:45px;height:45px;font-size:22px;font-weight:900}
+    .sheet{position:absolute;z-index:11;bottom:calc(env(safe-area-inset-bottom) + 13px);left:12px;right:12px;margin:auto;max-width:510px;background:#111d1aee;border:1px solid #49645480;border-radius:23px;box-shadow:0 14px 45px #0009;backdrop-filter:blur(16px);overflow:hidden}
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:9px}
+    .tab{border:0;color:#a4b6ab;background:none;padding:12px 6px;border-radius:12px;font-weight:900;letter-spacing:.5px;font-size:12px}
+    .tab.active{color:#101a18;background:var(--lime)}
+    .content{padding:10px 17px 17px;max-height:49vh;overflow:auto}
+    .panel{display:none}.panel.active{display:block}
+    .section-label{color:var(--lime);font-size:10px;letter-spacing:2px;font-weight:1000;text-transform:uppercase}
+    .big-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0 12px}
+    .big-line h2{font-size:20px;line-height:1.05;margin:0;letter-spacing:-.4px}
+    .small{font-size:12px;color:#b5c5b9;line-height:1.4;margin:8px 0}
+    .primary{width:100%;padding:14px;border:0;border-radius:14px;background:var(--lime);font-weight:1000;color:#152017;font-size:15px}
+    .primary.stop{background:#fc8d75}.secondary{width:100%;border:1px solid #526959;background:#253a31;color:white;font-weight:850;border-radius:13px;padding:11px}
+    .buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .avatar-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:10px 0}
+    .avatar{border:2px solid #385044;border-radius:14px;background:#24382f;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:68px;padding:5px 1px}
+    .avatar span{font-size:29px;line-height:1}.avatar small{font-size:8px;font-weight:800;max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .avatar.selected{border-color:var(--lime);background:#405832}
+    .toggle{display:flex;align-items:center;gap:12px;margin:12px 0;font-size:13px;font-weight:750;line-height:1.35}
+    .toggle input{width:21px;height:21px;accent-color:var(--lime)}
+    .claim{padding:10px;background:#263d30;border:1px solid #48694b;border-radius:12px;margin:8px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .claim strong{font-size:13px}.claim small{font-size:11px;color:#c1d6c5;display:block}
+    .footnote{font-size:10px;color:#92a99a;margin:11px 0 0;line-height:1.4}
+    .toast{position:absolute;z-index:25;left:18px;right:18px;top:calc(env(safe-area-inset-top) + 169px);max-width:420px;margin:auto;padding:13px 17px;border:1px solid #b6eb72;background:#12261deE;color:#dcff99;border-radius:13px;font-size:12px;font-weight:800;display:none;text-align:center;box-shadow:0 8px 30px #0005}
+    .toast.show{display:block}.emoji-marker{border:3px solid #e8ff9c;background:#19302a;border-radius:50%;box-shadow:0 3px 15px #0008;text-align:center;line-height:38px;font-size:25px}
+    .territory-label{background:#182f23e8;border:1px solid var(--lime);border-radius:12px;padding:3px 8px;color:white;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 2px 5px #0005}
+    .hidden{display:none!important}
+    @media(max-height:680px){.content{max-height:39vh}.stat{padding:6px 9px}.stats{margin-top:8px}.gps-pill{top:calc(env(safe-area-inset-top) + 98px)}}
+  </style>
+</head>
+<body>
+  <div id="map" aria-label="Street Ops territory map"></div><div class="veil"></div>
+  <header>
+    <div class="headline"><div><div class="logo">STREET <b>OPS</b></div><div class="strap">REAL STREETS. REAL OPS.</div></div><button class="mode" id="modeBtn">DEMO MODE</button></div>
+    <div class="stats"><div class="stat"><strong id="areaStat">0</strong><span>m² claimed</span></div><div class="stat"><strong id="countStat">0</strong><span>territories</span></div><div class="stat"><strong id="rideStat">0 m</strong><span>this route</span></div></div>
+  </header>
+  <div class="gps-pill" id="status">● READY TO RIDE</div>
+  <div class="map-controls"><button class="round" id="locateBtn" aria-label="Centre on my location">⌖</button><button class="round" id="zoomIn" aria-label="Zoom in">+</button><button class="round" id="zoomOut" aria-label="Zoom out">−</button></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <main class="sheet">
+    <nav class="tabs"><button class="tab active" data-panel="ops">⚡ OPS</button><button class="tab" data-panel="crew">😎 CREW</button><button class="tab" data-panel="intel">⚙ INTEL</button></nav>
+    <div class="content">
+      <section id="ops" class="panel active">
+        <div class="section-label">TERRITORY CONTROL</div>
+        <div class="big-line"><h2 id="opsTitle">Your streets. Your move.</h2><span id="badge" style="font-size:29px">😎</span></div>
+        <p class="small" id="instructions">Your GPS trail builds automatically while you ride. Cross your earlier path to close a loop and capture the area inside it.</p>
+        <div class="buttons"><button class="primary" id="trackBtn">▶ START GPS</button><button class="secondary" id="demoBtn">TRY DEMO LOOP</button></div>
+        <p class="footnote" id="helpText">Ride in a safe place. Keep your eyes on the road, not the screen. GPS works best outdoors and needs location permission.</p>
+      </section>
+      <section id="crew" class="panel">
+        <div class="section-label">PICK YOUR PLAYER ICON</div>
+        <div class="big-line"><h2>Who's running these streets?</h2></div>
+        <p class="small">20 original meme-inspired character heads. Your choice appears on the map and on territory markers.</p>
+        <div class="avatar-grid" id="avatarGrid"></div>
+      </section>
+      <section id="intel" class="panel">
+        <div class="section-label">OPERATIONS SETTINGS</div>
+        <div class="big-line"><h2>YOUR OPS FILE</h2></div>
+        <label class="toggle"><input type="checkbox" id="visibility"> Allow my avatar on public maps (future multiplayer feature)</label>
+        <p class="small">Multiplayer sharing is not live yet. This setting is only saved on this device. Your real-time location is never uploaded by this demo.</p>
+        <div class="section-label" style="margin-top:14px">CLAIMED TERRITORY</div>
+        <div id="claims"><p class="small">No territory yet. Close your first loop to claim one.</p></div>
+        <button class="secondary" id="clearBtn" style="margin-top:8px">CLEAR MY LOCAL GAME DATA</button>
+        <p class="footnote">Prototype v0.1 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
+      </section>
+    </div>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+  (function(){
+    "use strict";
+    var characters=[
+      ["🍌","Banana Boss"],["🚽","Toilet Titan"],["🐸","Frog Flex"],["🦈","Shark Mode"],["🦆","Quack Ops"],
+      ["🦖","Dino Drip"],["🧀","Cheese Chief"],["🥔","Spud Lord"],["👽","Alien Aura"],["🐱","Cat Chaos"],
+      ["🐵","Monkey Mayhem"],["🤖","Bot Bro"],["🍕","Pizza Punk"],["🐢","Turtle Turbo"],["🦄","Unicorn Unit"],
+      ["🦝","Raccoon Rogue"],["🦀","Crab King"],["🐔","Chook Champ"],["💀","Skull Squad"],["🧠","Brain Boss"]
+    ];
+    var KEY="streetops-v01";
+    function defaultData(){return {avatar:0,visibility:false,territories:[]};}
+    var saved;
+    try{saved=JSON.parse(localStorage.getItem(KEY))||defaultData();}catch(e){saved=defaultData();}
+    if(!Array.isArray(saved.territories))saved.territories=[];
+    if(!Number.isInteger(saved.avatar)||saved.avatar<0||saved.avatar>=characters.length)saved.avatar=0;
+    function save(){try{localStorage.setItem(KEY,JSON.stringify(saved));}catch(e){show("Device storage full: new claims may not persist.");}}
+    function id(x){return document.getElementById(x);}
+    function safeArea(n){return Math.round(n).toLocaleString("en-AU");}
+    function dist(a,b){var R=6371000,rad=Math.PI/180;var dLat=(b[0]-a[0])*rad,dLon=(b[1]-a[1])*rad;var k=Math.sin(dLat/2)**2+Math.cos(a[0]*rad)*Math.cos(b[0]*rad)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(k),Math.sqrt(1-k));}
+    function area(ring){var lat=ring.reduce(function(a,p){return a+p[0];},0)/ring.length;var cos=Math.cos(lat*Math.PI/180),s=0;for(var i=0;i<ring.length-1;i++){var a=ring[i],b=ring[i+1];s+=(a[1]*cos*111320)*(b[0]*111195)-(b[1]*cos*111320)*(a[0]*111195);}return Math.abs(s)/2;}
+    function intersect(a,b,c,d){
+      var avg=(a[0]+b[0]+c[0]+d[0])/4,sc=Math.cos(avg*Math.PI/180);
+      var x1=a[1]*sc,y1=a[0],x2=b[1]*sc,y2=b[0],x3=c[1]*sc,y3=c[0],x4=d[1]*sc,y4=d[0];
+      var den=(x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);
+      if(Math.abs(den)<1e-14)return null;
+      var t=((x1-x3)*(y3-y4)-(y1-y3)*(x3-x4))/den;
+      var u=((x1-x3)*(y1-y2)-(y1-y3)*(x1-x2))/den;
+      if(t<=0.015||t>=0.985||u<=0.015||u>=0.985)return null;
+      return [a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])];
+    }
+    var map=L.map("map",{zoomControl:false,attributionControl:true,preferCanvas:true}).setView([-35.105,150.60],14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    var trail=[],history=L.layerGroup().addTo(map),claimsLayer=L.layerGroup().addTo(map),trailLine=L.polyline([],{color:"#b3ff39",weight:5,opacity:.95}).addTo(map),player=null,accuracyCircle=null,tracking=false,demo=false,watchId=null,lastTime=0,toastTimer=null;
+    function show(message){var el=id("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show");},4500);}
+    function status(s,kind){id("status").textContent="● "+s;id("status").className="gps-pill "+(kind||"");}
+    function markerIcon(){return L.divIcon({className:"",html:'<div class="emoji-marker">'+characters[saved.avatar][0]+"</div>",iconSize:[44,44],iconAnchor:[22,22]});}
+    function markPlayer(p,acc){if(!player){player=L.marker(p,{icon:markerIcon(),zIndexOffset:1000}).addTo(map);}else{player.setLatLng(p);player.setIcon(markerIcon());}
+      if(Number.isFinite(acc)&&acc>0&&!demo){if(!accuracyCircle)accuracyCircle=L.circle(p,{radius:acc,weight:1,color:"#547a42",fillOpacity:.05}).addTo(map);else accuracyCircle.setLatLng(p).setRadius(acc);}
+    }
+    function currentDistance(){var total=0;for(var i=1;i<trail.length;i++)total+=dist(trail[i-1],trail[i]);return total;}
+    function stats(){var total=saved.territories.reduce(function(s,c){return s+c.area;},0);id("areaStat").textContent=safeArea(total);id("countStat").textContent=saved.territories.length;var m=currentDistance();id("rideStat").textContent=m>=1000?(m/1000).toFixed(2)+" km":safeArea(m)+" m";}
+    function repaintClaims(){claimsLayer.clearLayers();var out=id("claims");out.replaceChildren();
+      if(saved.territories.length===0){var p=document.createElement("p");p.className="small";p.textContent="No territory yet. Close your first loop to claim one.";out.appendChild(p);}
+      saved.territories.slice().reverse().forEach(function(c){
+        if(!Array.isArray(c.ring)||c.ring.length<4)return;
+        var poly=L.polygon(c.ring,{color:"#a7ef59",fillColor:"#7ac840",fillOpacity:.25,weight:3}).addTo(claimsLayer);
+        var center=poly.getBounds().getCenter(),name=characters[c.avatar]||characters[0];
+        L.marker(center,{icon:L.divIcon({className:"",html:'<div class="territory-label">'+name[0]+" "+Math.round(c.area).toLocaleString()+"m²</div>",iconSize:[95,25],iconAnchor:[47,12]})}).addTo(claimsLayer);
+        var div=document.createElement("div");div.className="claim";
+        var a=document.createElement("div"),b=document.createElement("div"),strong=document.createElement("strong"),small=document.createElement("small");
+        strong.textContent=name[0]+" "+name[1];small.textContent=new Date(c.date).toLocaleDateString("en-AU")+" · "+safeArea(c.area)+" m²";a.appendChild(strong);a.appendChild(small);
+        b.textContent="✓ CLAIMED";b.style.cssText="font-size:10px;color:#ceff8d;font-weight:900";div.appendChild(a);div.appendChild(b);out.appendChild(div);
+      });stats();
+    }
+    function claim(ring,intersection,p){var m2=area(ring);if(m2<300)return false;
+      saved.territories.push({ring:ring,area:Math.round(m2),avatar:saved.avatar,date:new Date().toISOString()});save();
+      L.polyline(trail.concat([p]),{color:"#4fa968",weight:3,opacity:.55}).addTo(history);
+      trail=[intersection,p];trailLine.setLatLngs(trail);repaintClaims();
+      id("opsTitle").textContent="TERRITORY CAPTURED!";
+      show("⚡ MISSION COMPLETE! "+safeArea(m2)+" m² captured. Keep going!");
+      return true;
+    }
+    function addPoint(p,fromDemo,accuracy){
+      if(!Array.isArray(p)||!Number.isFinite(p[0])||!Number.isFinite(p[1]))return;
+      var prev=trail[trail.length-1];
+      if(prev){var step=dist(prev,p);if(step<5)return;if(!fromDemo&&step>250){status("GPS JUMP IGNORED","warn");return;}}
+      markPlayer(p,accuracy);
+      if(prev&&trail.length>=4&&currentDistance()>=80){
+        for(var j=0;j<trail.length-3;j++){
+          var cross=intersect(trail[j],trail[j+1],prev,p);
+          if(cross){
+            var ring=[cross].concat(trail.slice(j+1),[p,cross]);
+            if(claim(ring,cross,p)){map.panTo(p);return;}
+          }
+        }
+      }
+      trail.push(p);
+      if(trail.length>20000){L.polyline(trail.slice(0,10000),{color:"#4fa968",weight:2,opacity:.5}).addTo(history);trail=trail.slice(10000);}
+      trailLine.setLatLngs(trail);stats();
+      if(trail.length===1){map.setView(p,16);}else if(!fromDemo)map.panTo(p,{animate:true,duration:.6});
+    }
+    function stop(){if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}tracking=false;id("trackBtn").textContent="▶ START GPS";id("trackBtn").classList.remove("stop");status(demo?"DEMO MODE":"GPS STOPPED");}
+    function start(){
+      if(!navigator.geolocation){show("GPS is unavailable in this browser.");return;}
+      if(!window.isSecureContext){show("GPS requires HTTPS. Open the published secure game link.");return;}
+      demo=false;id("modeBtn").classList.remove("on");id("modeBtn").textContent="DEMO MODE";
+      tracking=true;id("trackBtn").textContent="■ STOP GPS";id("trackBtn").classList.add("stop");status("SEARCHING FOR GPS","warn");
+      watchId=navigator.geolocation.watchPosition(function(pos){
+        if(!tracking)return;
+        var acc=pos.coords.accuracy;
+        if(acc>70){status("WAITING FOR BETTER GPS ("+Math.round(acc)+"m)","warn");return;}
+        var t=pos.timestamp,p=[pos.coords.latitude,pos.coords.longitude],prev=trail[trail.length-1];
+        if(prev&&lastTime&&t>lastTime&&dist(prev,p)/((t-lastTime)/1000)>35){status("GPS SPIKE IGNORED","warn");return;}
+        lastTime=t;addPoint(p,false,acc);
+        status("LIVE GPS · ±"+Math.round(acc)+"m","good");
+      },function(err){
+        stop();status(err.code===1?"LOCATION PERMISSION DENIED":"GPS NOT AVAILABLE","bad");
+        show(err.code===1?"Enable location permission in your browser settings.":"Could not start GPS. Try outdoors with location enabled.");
+      },{enableHighAccuracy:true,maximumAge:1000,timeout:18000});
+    }
+    function enterDemo(){
+      stop();demo=true;id("modeBtn").classList.add("on");id("modeBtn").textContent="DEMO ACTIVE";
+      status("TAP THE MAP TO DRAW","good");show("DEMO: Tap the map to draw a route, or press TRY DEMO LOOP.");
+      if(accuracyCircle){map.removeLayer(accuracyCircle);accuracyCircle=null;}
+    }
+    function testLoop(){
+      if(!demo)enterDemo();
+      trail=[];trailLine.setLatLngs([]);
+      var c=map.getCenter(),lat=c.lat,lng=c.lng;
+      var points=[[lat-.0004,lng-.0005],[lat-.0004,lng+.0008],[lat+.0008,lng+.0008],[lat+.0008,lng-.0007],[lat-.0008,lng+.00015]];
+      map.setView([lat,lng],16);
+      points.forEach(function(p){addPoint(p,true);});
+      if(saved.territories.length===0)show("Demo loop drawn. Tap again across your trail to close it.");
+    }
+    map.on("click",function(ev){if(demo)addPoint([ev.latlng.lat,ev.latlng.lng],true);});
+    id("trackBtn").onclick=function(){if(tracking)stop();else start();};
+    id("modeBtn").onclick=function(){if(!demo)enterDemo();else{demo=false;stop();id("modeBtn").classList.remove("on");id("modeBtn").textContent="DEMO MODE";show("Demo ended. Start GPS for a real ride.");}};
+    id("demoBtn").onclick=testLoop;
+    id("locateBtn").onclick=function(){if(player)map.setView(player.getLatLng(),17);else if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(p){map.setView([p.coords.latitude,p.coords.longitude],16);},function(){show("Location unavailable. Start GPS or use demo mode.");},{enableHighAccuracy:true,timeout:12000});}};
+    id("zoomIn").onclick=function(){map.zoomIn();};id("zoomOut").onclick=function(){map.zoomOut();};
+    document.querySelectorAll(".tab").forEach(function(btn){btn.onclick=function(){
+      document.querySelectorAll(".tab").forEach(function(b){b.classList.remove("active");});document.querySelectorAll(".panel").forEach(function(b){b.classList.remove("active");});
+      btn.classList.add("active");id(btn.dataset.panel).classList.add("active");setTimeout(function(){map.invalidateSize();},80);
+    };});
+    function renderAvatars(){var root=id("avatarGrid");root.replaceChildren();characters.forEach(function(a,i){
+      var btn=document.createElement("button");btn.className="avatar"+(saved.avatar===i?" selected":"");
+      btn.setAttribute("aria-label","Choose "+a[1]);btn.title=a[1];var emo=document.createElement("span"),name=document.createElement("small");emo.textContent=a[0];name.textContent=a[1];btn.appendChild(emo);btn.appendChild(name);
+      btn.onclick=function(){saved.avatar=i;id("badge").textContent=a[0];if(player)player.setIcon(markerIcon());save();renderAvatars();show(a[1]+" selected!");};root.appendChild(btn);
+    });}
+    id("visibility").checked=!!saved.visibility;
+    id("visibility").onchange=function(){saved.visibility=id("visibility").checked;save();show("Preference saved on this device. Live sharing is not enabled.");};
+    id("clearBtn").onclick=function(){if(!window.confirm("Delete your claimed territories, avatar choice and settings from this phone?"))return;
+      saved=defaultData();trail=[];history.clearLayers();trailLine.setLatLngs([]);if(player){map.removeLayer(player);player=null;}
+      save();id("badge").textContent=characters[0][0];id("visibility").checked=false;renderAvatars();repaintClaims();id("opsTitle").textContent="Your streets. Your move.";show("Local game data cleared.");
+    };
+    id("badge").textContent=characters[saved.avatar][0];renderAvatars();repaintClaims();
+    if("serviceWorker" in navigator&&window.isSecureContext){navigator.serviceWorker.register("./sw.js").catch(function(){});}
+  })();
+  </script>
+</body>
+</html>
