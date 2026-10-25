@@ -8,14 +8,14 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzxMFZREXxPDuYNRI0ZB6a3bECA=" crossorigin="">
-  <title>STREET OPS — Real Streets. Real Ops.</title>
+  <title>STREET OPS — Real Streets. Real Ops. (v0.2)</title>
   <style>
     :root{--lime:#c9ff55;--ink:#101a18;--panel:#172421;--muted:#9bad9f;--paper:#f2f6e8;--red:#ff7567}
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--ink);color:var(--paper)}
     button{font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}button:disabled{opacity:.5;cursor:not-allowed}
-    #map{position:absolute;inset:0;z-index:1;background:#dce5d7}
+    #map{position:fixed;top:0;right:0;bottom:0;left:0;width:100vw;height:100vh;height:100dvh;min-height:300px;z-index:1;background:#dce5d7;touch-action:pan-x pan-y}
     .leaflet-control-attribution{font-size:9px!important}
-    .veil{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(180deg,rgba(10,21,17,.7),transparent 24%,transparent 55%,rgba(10,21,17,.38))}
+    .veil{position:fixed;inset:0;pointer-events:none;z-index:2;background:linear-gradient(180deg,rgba(10,21,17,.55),transparent 19%,transparent 70%,rgba(10,21,17,.2))}
     header{position:absolute;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top) + 12px) 15px 8px;z-index:10;pointer-events:none}
     .headline{display:flex;align-items:center;justify-content:space-between;gap:12px}
     .logo{font-weight:1000;font-size:25px;letter-spacing:-1.3px;line-height:1;text-shadow:0 2px 8px #0008}
@@ -28,10 +28,16 @@
     .gps-pill{position:absolute;top:calc(env(safe-area-inset-top) + 108px);right:14px;z-index:10;background:#172421e9;padding:9px 12px;border:1px solid #45594b;border-radius:20px;font-size:11px;font-weight:800;max-width:210px;text-align:center}
     .gps-pill.good{color:var(--lime)}.gps-pill.warn{color:#ffe092}
     .gps-pill.bad{color:#ffa397}
-    .map-controls{position:absolute;z-index:9;right:14px;top:calc(env(safe-area-inset-top) + 155px);display:flex;flex-direction:column;gap:9px}
-    .round{border:0;border-radius:16px;box-shadow:0 4px 15px #0004;background:#13251ff2;color:var(--lime);width:45px;height:45px;font-size:22px;font-weight:900}
-    .sheet{position:absolute;z-index:11;bottom:calc(env(safe-area-inset-bottom) + 13px);left:12px;right:12px;margin:auto;max-width:510px;background:#111d1aee;border:1px solid #49645480;border-radius:23px;box-shadow:0 14px 45px #0009;backdrop-filter:blur(16px);overflow:hidden}
+    .map-controls{position:fixed;z-index:20;right:14px;top:calc(env(safe-area-inset-top) + 160px);display:flex;flex-direction:column;gap:9px;pointer-events:auto}
+    .round{border:1px solid #779374;border-radius:16px;box-shadow:0 4px 15px #0006;background:#13251ff5;color:var(--lime);width:48px;height:48px;font-size:23px;font-weight:900;touch-action:manipulation}
+    .sheet{position:fixed;z-index:11;bottom:calc(env(safe-area-inset-bottom) + 13px);left:12px;right:12px;margin:auto;max-width:510px;background:#111d1aee;border:1px solid #49645480;border-radius:23px;box-shadow:0 14px 45px #0009;backdrop-filter:blur(16px);overflow:hidden}
     .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:9px}
+    .sheet-toggle{display:block;width:100%;border:0;border-bottom:1px solid #49645480;background:#1d3027;color:#c9ff55;text-align:center;font-size:11px;font-weight:950;letter-spacing:1.1px;padding:9px;min-height:34px}
+    .sheet.collapsed .tabs,.sheet.collapsed .content{display:none}
+    .map-warning{position:fixed;top:48%;left:50%;transform:translate(-50%,-50%);z-index:7;background:#15251ef0;border:1px solid #b6d58a;border-radius:16px;padding:14px 17px;width:calc(100% - 58px);max-width:330px;font-size:12px;font-weight:800;color:white;text-align:center;display:none;box-shadow:0 10px 30px #0007;pointer-events:none}
+    .map-warning.show{display:block}
+    #map .leaflet-container{height:100%;width:100%}
+    .leaflet-tile-pane{opacity:1!important}
     .tab{border:0;color:#a4b6ab;background:none;padding:12px 6px;border-radius:12px;font-weight:900;letter-spacing:.5px;font-size:12px}
     .tab.active{color:#101a18;background:var(--lime)}
     .content{padding:10px 17px 17px;max-height:49vh;overflow:auto}
@@ -60,15 +66,15 @@
   </style>
 </head>
 <body>
-  <div id="map" aria-label="Street Ops territory map"></div><div class="veil"></div>
+  <div id="map" aria-label="Street Ops territory map"></div><div class="veil"></div><div class="map-warning" id="mapWarning" role="status">Map tiles did not load. Tap the layers button (▧) to switch map providers, or check your connection.</div>
   <header>
     <div class="headline"><div><div class="logo">STREET <b>OPS</b></div><div class="strap">REAL STREETS. REAL OPS.</div></div><button class="mode" id="modeBtn">DEMO MODE</button></div>
     <div class="stats"><div class="stat"><strong id="areaStat">0</strong><span>m² claimed</span></div><div class="stat"><strong id="countStat">0</strong><span>territories</span></div><div class="stat"><strong id="rideStat">0 m</strong><span>this route</span></div></div>
   </header>
   <div class="gps-pill" id="status">● READY TO RIDE</div>
-  <div class="map-controls"><button class="round" id="locateBtn" aria-label="Centre on my location">⌖</button><button class="round" id="zoomIn" aria-label="Zoom in">+</button><button class="round" id="zoomOut" aria-label="Zoom out">−</button></div>
+  <div class="map-controls"><button class="round" id="mapStyleBtn" title="Switch street maps" aria-label="Switch map provider">▧</button><button class="round" id="locateBtn" aria-label="Centre on my location">⌖</button><button class="round" id="zoomIn" aria-label="Zoom in">+</button><button class="round" id="zoomOut" aria-label="Zoom out">−</button></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <main class="sheet">
+  <main class="sheet" id="gameSheet"><button class="sheet-toggle" id="sheetToggle" aria-expanded="true">▼ SHOW MORE MAP ▲</button>
     <nav class="tabs"><button class="tab active" data-panel="ops">⚡ OPS</button><button class="tab" data-panel="crew">😎 CREW</button><button class="tab" data-panel="intel">⚙ INTEL</button></nav>
     <div class="content">
       <section id="ops" class="panel active">
@@ -92,7 +98,7 @@
         <div class="section-label" style="margin-top:14px">CLAIMED TERRITORY</div>
         <div id="claims"><p class="small">No territory yet. Close your first loop to claim one.</p></div>
         <button class="secondary" id="clearBtn" style="margin-top:8px">CLEAR MY LOCAL GAME DATA</button>
-        <p class="footnote">Prototype v0.1 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
+        <p class="footnote">Prototype v0.2 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
       </section>
     </div>
   </main>
@@ -127,8 +133,33 @@
       if(t<=0.015||t>=0.985||u<=0.015||u>=0.985)return null;
       return [a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])];
     }
-    var map=L.map("map",{zoomControl:false,attributionControl:true,preferCanvas:true}).setView([-35.105,150.60],14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    var map=L.map("map",{zoomControl:false,attributionControl:true,preferCanvas:true,fadeAnimation:false,zoomSnap:1}).setView([-35.105,150.60],14);
+    // Two independent map tile sources. Automatic fallback when a mobile connection blocks one.
+    var basemaps=[
+      {name:"CARTO STREETS",url:"https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",options:{subdomains:"abcd",maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}},
+      {name:"OPENSTREETMAP",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",options:{subdomains:"",maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}}
+    ];
+    var baseIndex=0,baseLayer=null,loadedTileCount=0,failedTileCount=0,autoFallbackUsed=false;
+    function setBasemap(index,manual){
+      baseIndex=index;loadedTileCount=0;failedTileCount=0;
+      if(baseLayer)map.removeLayer(baseLayer);
+      id("mapWarning").classList.remove("show");
+      baseLayer=L.tileLayer(basemaps[index].url,basemaps[index].options);
+      baseLayer.on("tileload",function(){if(baseIndex!==index)return;loadedTileCount++;id("mapWarning").classList.remove("show");});
+      baseLayer.on("tileerror",function(){if(baseIndex!==index)return;failedTileCount++;if(failedTileCount>=4&&loadedTileCount===0){if(index===0&&!autoFallbackUsed){autoFallbackUsed=true;setBasemap(1,false);show("Switching to backup map…");}else id("mapWarning").classList.add("show");}});
+      baseLayer.addTo(map);baseLayer.bringToBack();
+      if(manual)show("MAP: "+basemaps[index].name);
+      setTimeout(function(){if(baseIndex!==index||loadedTileCount>0)return;if(index===0&&!autoFallbackUsed){autoFallbackUsed=true;setBasemap(1,false);show("Trying backup map provider…");}else id("mapWarning").classList.add("show");},8000);
+      setTimeout(function(){map.invalidateSize({pan:false});},250);
+    }
+    setBasemap(0,false);
+    // Mobile viewport and orientation changes can leave Leaflet with stale dimensions.
+    function refreshMap(){map.invalidateSize({pan:false});}
+    window.addEventListener("resize",refreshMap);
+    window.addEventListener("orientationchange",function(){setTimeout(refreshMap,350);});
+    document.addEventListener("visibilitychange",function(){if(!document.hidden)setTimeout(refreshMap,180);});
+    if(window.visualViewport)window.visualViewport.addEventListener("resize",refreshMap);
+    setTimeout(refreshMap,500);
     var trail=[],history=L.layerGroup().addTo(map),claimsLayer=L.layerGroup().addTo(map),trailLine=L.polyline([],{color:"#b3ff39",weight:5,opacity:.95}).addTo(map),player=null,accuracyCircle=null,tracking=false,demo=false,watchId=null,lastTime=0,toastTimer=null;
     function show(message){var el=id("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show");},4500);}
     function status(s,kind){id("status").textContent="● "+s;id("status").className="gps-pill "+(kind||"");}
@@ -217,6 +248,8 @@
     id("demoBtn").onclick=testLoop;
     id("locateBtn").onclick=function(){if(player)map.setView(player.getLatLng(),17);else if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(p){map.setView([p.coords.latitude,p.coords.longitude],16);},function(){show("Location unavailable. Start GPS or use demo mode.");},{enableHighAccuracy:true,timeout:12000});}};
     id("zoomIn").onclick=function(){map.zoomIn();};id("zoomOut").onclick=function(){map.zoomOut();};
+    id("mapStyleBtn").onclick=function(){autoFallbackUsed=true;setBasemap((baseIndex+1)%basemaps.length,true);};
+    id("sheetToggle").onclick=function(){var collapsed=id("gameSheet").classList.toggle("collapsed");id("sheetToggle").textContent=collapsed?"▲ SHOW GAME CONTROLS ▼":"▼ SHOW MORE MAP ▲";id("sheetToggle").setAttribute("aria-expanded",String(!collapsed));setTimeout(refreshMap,150);};
     document.querySelectorAll(".tab").forEach(function(btn){btn.onclick=function(){
       document.querySelectorAll(".tab").forEach(function(b){b.classList.remove("active");});document.querySelectorAll(".panel").forEach(function(b){b.classList.remove("active");});
       btn.classList.add("active");id(btn.dataset.panel).classList.add("active");setTimeout(function(){map.invalidateSize();},80);
