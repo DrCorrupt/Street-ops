@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzxMFZREXxPDuYNRI0ZB6a3bECA=" crossorigin="">
-  <title>STREET OPS — Real Streets. Real Ops. (v0.5)</title>
+  <title>STREET OPS — Real Streets. Real Ops. (v0.6)</title>
   <style>
     :root{--lime:#c9ff55;--ink:#101a18;--panel:#172421;--muted:#9bad9f;--paper:#f2f6e8;--red:#ff7567}
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--ink);color:var(--paper)}
@@ -107,7 +107,7 @@
         <div class="section-label" style="margin-top:14px">CLAIMED TERRITORY</div>
         <div id="claims"><p class="small">No territory yet. Close your first loop to claim one.</p></div>
         <button class="secondary" id="clearBtn" style="margin-top:8px">CLEAR MY LOCAL GAME DATA</button>
-        <p class="footnote">Prototype v0.5 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
+        <p class="footnote">Prototype v0.6 · Data is stored only in this browser. Keep the app open and unlocked while tracking; phone browsers may pause GPS in the background. Do not ride while looking at your phone.</p>
       </section>
     </div>
   </main>
@@ -181,14 +181,17 @@
         var r=t.getBoundingClientRect();
         return r.right>bounds.left&&r.left<bounds.right&&r.bottom>bounds.top&&r.top<bounds.bottom;
       });
-      // At the start of a load, images can still be resolving. Only react to
-      // sizeable persistent gaps, never to one image or a briefly incomplete load.
-      if(images.length<3)return;
+      // Check for under-filled tile grids, not just broken tile images.
+      var expected=Math.ceil(Math.max(bounds.width,map.getSize().x)/256)*
+        Math.ceil(Math.max(bounds.height,map.getSize().y)/256);
+      var tooFew=images.length<Math.max(2,Math.floor(expected*0.60));
       var missing=images.filter(function(img){return !img.complete||img.naturalWidth===0;});
-      if(missing.length===0){id("mapWarning").classList.remove("show");return;}
-      if(missing.length/images.length<0.22&&missing.length<3)return;
+      if(!tooFew&&missing.length===0){id("mapWarning").classList.remove("show");return;}
+      if(!tooFew&&missing.length/images.length<0.22&&missing.length<3)return;
       if(round===0){
-        show("Recovering "+missing.length+" missing map sections…");
+        show("Restoring empty map sections…");
+        sizeMapNode();
+        map.invalidateSize({pan:false,animate:false});
         layer.redraw();
         setTimeout(function(){assessCoverage(layer,generation,1);},6000);
       }else if(baseIndex===0&&!autoFallbackUsed){
@@ -225,7 +228,12 @@
       setTimeout(function(){map.invalidateSize({pan:false});},300);
     }
     setBasemap(0,false);
-        // Mobile viewport and orientation changes can leave Leaflet with stale dimensions.
+    var coverageTimer=null;
+    map.on("moveend zoomend",function(){
+      clearTimeout(coverageTimer);
+      coverageTimer=setTimeout(function(){assessCoverage(baseLayer,mapGeneration,0);},5500);
+    });
+    // Mobile viewport and orientation changes can leave Leaflet with stale dimensions.
     function refreshMap(){
       var dimensions=sizeMapNode();
       map.invalidateSize({pan:false,animate:false});
@@ -252,7 +260,7 @@
         var good=onscreen.filter(function(im){return im.complete&&im.naturalWidth>0;});
         var failed=onscreen.filter(function(im){return im.complete&&im.naturalWidth===0;});
         var sample=onscreen.slice(0,3).map(function(im){var r=im.getBoundingClientRect();return [Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)].join(",");});
-        debugEl.textContent="v0.5 MAP DIAGNOSTICS\n"+
+        debugEl.textContent="v0.6 MAP DIAGNOSTICS\n"+
           "screen "+Math.round(innerWidth)+"×"+Math.round(innerHeight)+"\n"+
           "container "+Math.round(box.width)+"×"+Math.round(box.height)+"\n"+
           "Leaflet "+size.x+"×"+size.y+"\n"+
